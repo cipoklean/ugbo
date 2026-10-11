@@ -1,18 +1,23 @@
 """Gemma turns the rule-based facts into a short field plan in the farmer's language.
 
 Swappable backends, all running open-weight Gemma:
+  * local    - Gemma loaded with transformers in-process (default on a
+               Hugging Face ZeroGPU Space; also works on any CUDA machine)
   * ollama   - fully local, e.g. `ollama pull gemma3:4b` (works offline)
   * hf       - Hugging Face Inference router (OpenAI-compatible), HF_TOKEN
   * aistudio - Google AI Studio hosted Gemma (free tier), GEMINI_API_KEY
 
-Pick with UGBO_LLM=ollama|hf|aistudio, or leave unset to auto-detect.
+Pick with UGBO_LLM=local|ollama|hf|aistudio, or leave unset to auto-detect.
 """
 from __future__ import annotations
 
 import json
 import os
+from functools import lru_cache
 
 import requests
+
+from .gpu import gpu
 
 from .season import ZONES, Signals
 from .weather import RainFacts
@@ -61,13 +66,50 @@ def _backend() -> str:
         return b
     if os.getenv("GEMINI_API_KEY"):
         return "aistudio"
+    if os.getenv("SPACE_ID"):  # running on a Hugging Face Space
+        return "local"
     if os.getenv("HF_TOKEN"):
         return "hf"
     return "ollama"
 
 
+LOCAL_MODEL = os.getenv("UGBO_LOCAL_MODEL", "unsloth/gemma-3-12b-it")  # ungated mirror of google/gemma-3-12b-it
+
+
+@lru_cache(maxsize=1)
+def _local():
+    import torch
+    from transformers import AutoModelForImageTextToText, AutoProcessor
+
+    processor = AutoProcessor.from_pretrained(LOCAL_MODEL)
+    model = AutoModelForImageTextToText.from_pretrained(
+        LOCAL_MODEL, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True)
+    return processor, model.eval()
+
+
+@gpu(duration=90)
+def _generate_local(prompt: str) -> str:
+    import torch
+
+    processor, model = _local()
+    model.to("cuda" if torch.cuda.is_available() else "cpu")
+    messages = [
+        {"role": "system", "content": [{"type": "text", "text": SYSTEM}]},
+        {"role": "user", "content": [{"type": "text", "text": prompt}]},
+    ]
+    inputs = processor.apply_chat_template(
+        messages, add_generation_prompt=True, tokenize=True,
+        return_dict=True, return_tensors="pt").to(model.device)
+    n = inputs["input_ids"].shape[-1]
+    with torch.inference_mode():
+        out = model.generate(**inputs, max_new_tokens=350, do_sample=False)
+    return processor.decode(out[0][n:], skip_special_tokens=True).strip()
+
+
 def generate(prompt: str) -> str:
     b = _backend()
+    if b == "local":
+        return _generate_local(prompt)
     if b == "ollama":
         host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
         model = os.getenv("UGBO_MODEL", "gemma3:4b")

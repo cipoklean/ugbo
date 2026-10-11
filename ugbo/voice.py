@@ -15,6 +15,8 @@ from functools import lru_cache
 
 import numpy as np
 
+from .gpu import device as _device, gpu
+
 ASR_MODEL = os.getenv("UGBO_ASR_MODEL", "Axiveri/NaijaVox-2.0")
 ASR_LANG_TOKEN = {"en": "<|en|>", "pcm": "<|pcm|>", "ha": "<|ha|>", "yo": "<|yo|>", "ig": "<|ig|>"}
 
@@ -34,8 +36,11 @@ def _asr():
 
     torch.set_num_threads(max(1, os.cpu_count() or 1))
     processor = WhisperProcessor.from_pretrained(ASR_MODEL)
-    model = WhisperForConditionalGeneration.from_pretrained(ASR_MODEL, torch_dtype=torch.float32)
-    model.eval()
+    on_gpu = torch.cuda.is_available() or bool(os.getenv("SPACE_ID"))
+    dtype = torch.float16 if on_gpu else torch.float32
+    model = WhisperForConditionalGeneration.from_pretrained(
+        ASR_MODEL, torch_dtype=dtype, low_cpu_mem_usage=True)
+    model.to(_device()).eval()
     return processor, model
 
 
@@ -52,6 +57,7 @@ def _to_16k_mono(sr: int, audio: np.ndarray) -> np.ndarray:
     return audio[: 16000 * 30]  # Whisper window: 30 s is plenty for a question
 
 
+@gpu
 def transcribe(sr: int, audio: np.ndarray, lang: str = "pcm") -> str:
     import torch
 
@@ -59,10 +65,12 @@ def transcribe(sr: int, audio: np.ndarray, lang: str = "pcm") -> str:
     vocab = processor.tokenizer.get_vocab()
     audio = _to_16k_mono(sr, audio)
     feats = processor.feature_extractor(audio, sampling_rate=16000, return_tensors="pt").input_features
+    feats = feats.to(model.device, dtype=model.dtype)
     prompt = [vocab["<|startoftranscript|>"], vocab[ASR_LANG_TOKEN.get(lang, "<|en|>")],
               vocab["<|transcribe|>"], vocab["<|notimestamps|>"]]
     with torch.no_grad():
-        out = model.generate(feats, decoder_input_ids=torch.tensor([prompt]), max_new_tokens=200)
+        out = model.generate(feats, decoder_input_ids=torch.tensor([prompt], device=model.device),
+                             max_new_tokens=200)
     return processor.tokenizer.decode(out[0], skip_special_tokens=True).strip()
 
 

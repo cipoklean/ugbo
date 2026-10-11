@@ -1,11 +1,24 @@
 """Ugbo web app. Speak or tap, hear your plan, put the phone away, go to the farm."""
 from __future__ import annotations
 
+import os
+
 import gradio as gr
 
-from ugbo import voice
+from ugbo import llm, voice
 from ugbo.plan import facts_summary, make_plan
 from ugbo.season import CROPS
+
+if os.getenv("SPACE_ID"):
+    # On a ZeroGPU Space, download and place models once at startup so a
+    # farmer's request never waits on a multi-GB download.
+    _, asr_model = voice._asr()
+    asr_model.to("cuda")
+    if llm._backend() == "local":
+        _, lm = llm._local()
+        lm.to("cuda")
+    for code in voice.TTS_MODEL:
+        voice._tts(code)
 
 LANG_CHOICES = [("Pidgin", "pcm"), ("English", "en"), ("Hausa", "ha"), ("Yorùbá", "yo"), ("Igbo", "ig")]
 
@@ -33,7 +46,7 @@ def run(town, crops, lang, mic, typed):
     return audio, plan.text, heard, facts_summary(plan)
 
 
-with gr.Blocks(title="Ugbo - talk to your farm", theme=gr.themes.Soft(primary_hue="green")) as demo:
+with gr.Blocks(title="Ugbo - talk to your farm") as demo:
     gr.Markdown("# 🌱 Ugbo\n**Ask about your farm by voice. Hear this week's plan. Then go to the field.**")
     with gr.Row():
         town = gr.Textbox(label="Town or village", value="Nsukka")
@@ -51,4 +64,4 @@ with gr.Blocks(title="Ugbo - talk to your farm", theme=gr.themes.Soft(primary_hu
     go.click(run, [town, crops, lang, mic, typed], [spoken, text, heard, facts])
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(theme=gr.themes.Soft(primary_hue="green"))

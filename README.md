@@ -4,7 +4,8 @@ emoji: 🌱
 colorFrom: green
 colorTo: yellow
 sdk: gradio
-sdk_version: 4.44.1
+sdk_version: 6.30.0
+python_version: "3.12"
 app_file: app.py
 pinned: false
 license: mit
@@ -40,13 +41,14 @@ The screen is the shortest part of the experience. Ask, listen, go to the farm.
   heavy-rain warnings and dry-spell checks come from transparent rules in
   `ugbo/season.py`. Gemma only explains them, so it can't invent a planting date.
 * **Free to run.** Every data source is free and keyless.
-* **Swappable model.** `UGBO_LLM=ollama` runs Gemma fully on your own machine;
-  `hf` or `aistudio` use hosted Gemma when you don't have the hardware.
+* **Swappable model.** On the Hugging Face Space, Gemma 3 12B runs in-process on
+  free ZeroGPU (`UGBO_LLM=local`). `ollama` runs Gemma fully on your own machine,
+  and `hf` or `aistudio` use hosted Gemma when you don't have the hardware.
 
 ## Run it
 
 ```bash
-pip install -r requirements.txt
+pip install torch -r requirements.txt
 
 # pick one Gemma backend
 export UGBO_LLM=ollama            # local: ollama pull gemma3:4b
@@ -73,7 +75,7 @@ Optional: `UGBO_MODEL` overrides the Gemma model name, `UGBO_ASR_MODEL` the spee
 ## Open models used
 
 * [NaijaVox-2.0](https://huggingface.co/Axiveri/NaijaVox-2.0) (Apache-2.0): Whisper-large-v3 fine-tuned for Nigerian languages
-* [Gemma](https://ai.google.dev/gemma): open-weight LLM from Google
+* [Gemma 3 12B](https://huggingface.co/google/gemma-3-12b-it): open-weight LLM from Google (the Space loads the ungated `unsloth/gemma-3-12b-it` copy of the same weights)
 * [MMS-TTS](https://huggingface.co/facebook/mms-tts-pcm) (CC-BY-NC-4.0): Meta's Massively Multilingual Speech voices
 
 ## Limits
