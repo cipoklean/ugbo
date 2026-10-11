@@ -59,7 +59,7 @@ def rule_plan(facts: RainFacts, sig: Signals, crops: list[str], lang: str = "en"
     """A plain plan built only from the rules, used when the model can't run.
 
     Pidgin is written by hand; Hausa, Yoruba and Igbo are machine-translated
-    from the English plan (Google Translate), falling back to English.
+    from the English plan (MyMemory, then Google Translate), falling back to English.
     """
     if lang == "pcm":
         return _pidgin_plan(facts, sig)
@@ -70,13 +70,43 @@ def rule_plan(facts: RainFacts, sig: Signals, crops: list[str], lang: str = "en"
 
 
 def translate(text: str, lang: str) -> str:
+    """English -> Hausa/Yoruba/Igbo. MyMemory first, Google Translate second."""
+    try:
+        return _mymemory(text, lang)
+    except Exception as e:
+        print(f"MyMemory unavailable: {e}", flush=True)
     try:
         from deep_translator import GoogleTranslator
-        out = GoogleTranslator(source="en", target=lang).translate(text)
-        return out or text
+        return GoogleTranslator(source="en", target=lang).translate(text) or text
     except Exception as e:
         print(f"Translation unavailable, answering in English: {e}", flush=True)
         return text
+
+
+def _mymemory(text: str, lang: str) -> str:
+    import os
+
+    import requests
+    chunks, cur = [], ""
+    for sent in re.split(r"(?<=[.!?:])\s+", text):  # MyMemory takes up to 500 bytes
+        if len(cur) + len(sent) > 400 and cur:
+            chunks.append(cur)
+            cur = ""
+        cur = f"{cur} {sent}".strip()
+    if cur:
+        chunks.append(cur)
+    out = []
+    for c in chunks:
+        params = {"q": c, "langpair": f"en|{lang}"}
+        if os.environ.get("MYMEMORY_EMAIL"):  # raises the free daily limit
+            params["de"] = os.environ["MYMEMORY_EMAIL"]
+        r = requests.get("https://api.mymemory.translated.net/get", params=params, timeout=20)
+        r.raise_for_status()
+        d = r.json()
+        if d.get("quotaFinished") or str(d.get("responseStatus")) != "200":
+            raise RuntimeError(d.get("responseDetails") or "quota finished")
+        out.append(d["responseData"]["translatedText"])
+    return " ".join(out)
 
 
 _SOIL_PCM = {"wet": "don wet well well", "moist": "get small water", "drying": "dey dry small small",
