@@ -1,5 +1,6 @@
 requests
 gTTS
+deep-translator
 edge-tts
 numpy
 librosa
