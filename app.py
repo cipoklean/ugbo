@@ -1,12 +1,14 @@
 """Ugbo web app. Speak or tap, hear your plan, put the phone away, go to the farm.
 
-The plan is read aloud by the phone's own text-to-speech voice (the browser's
-Web Speech API), which sounds natural, works on low-end Android phones and
-costs no GPU. The server-side voices in ugbo/voice.py remain for the CLI.
+The plan is read aloud with Google's text-to-speech (gTTS, Nigerian English
+accent; Hausa voice for Hausa). It returns a small MP3 that plays in any phone
+browser and costs no GPU. The open-model voices in ugbo/voice.py remain for the CLI.
 """
 from __future__ import annotations
 
 import os
+
+import tempfile
 
 import gradio as gr
 
@@ -41,30 +43,25 @@ def run(town, crops, lang, mic, typed):
     try:
         plan = make_plan(town or "Nsukka", crops or ["maize"], lang, question)
     except Exception as e:
-        return f"Sorry, something went wrong: {e}", heard, ""
-    return plan.text, heard, facts_summary(plan)
+        return None, f"Sorry, something went wrong: {e}", heard, ""
+    return speak(plan.text, lang), plan.text, heard, facts_summary(plan)
 
 
-# Read the plan aloud with the phone's own voice. Prefer a Nigerian voice.
-READ_ALOUD = """
-(text, lang) => {
-  const synth = window.speechSynthesis;
-  if (!synth || !text) return;
-  synth.cancel();
-  const want = {pcm: ["en-NG"], en: ["en-NG", "en-GB", "en"], ha: ["ha", "en-NG"],
-                yo: ["yo", "en-NG"], ig: ["ig", "en-NG"]}[lang] || ["en-NG", "en"];
-  const voices = synth.getVoices();
-  let voice = null;
-  for (const w of want) {
-    voice = voices.find(v => v.lang.replace("_", "-").toLowerCase().startsWith(w.toLowerCase()));
-    if (voice) break;
-  }
-  const u = new SpeechSynthesisUtterance(text);
-  if (voice) { u.voice = voice; u.lang = voice.lang; } else { u.lang = "en-NG"; }
-  u.rate = 0.95;
-  synth.speak(u);
-}
-"""
+def speak(text: str, lang: str):
+    """MP3 of the plan in a natural voice; None if the voice service is down."""
+    try:
+        from gtts import gTTS
+        f = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
+        if lang == "ha":
+            gTTS(text, lang="ha").save(f.name)
+        else:  # Nigerian English accent for English, Pidgin, Yoruba and Igbo text
+            gTTS(text, lang="en", tld="com.ng").save(f.name)
+        return f.name
+    except Exception as e:
+        print(f"Voice unavailable: {e}", flush=True)
+        return None
+
+
 
 
 with gr.Blocks(title="Ugbo - talk to your farm") as demo:
@@ -76,15 +73,13 @@ with gr.Blocks(title="Ugbo - talk to your farm") as demo:
     mic = gr.Audio(sources=["microphone"], type="numpy", label="🎤 Tap and ask your question (optional)")
     typed = gr.Textbox(label="...or type it (optional)", placeholder="Rain don start, make I plant maize now?")
     go = gr.Button("Get my week plan", variant="primary", size="lg")
+    spoken = gr.Audio(label="🔊 Listen to your plan", type="filepath", autoplay=True)
     text = gr.Textbox(label="Your plan", lines=6)
-    listen = gr.Button("🔊 Read it aloud", size="lg")
     heard = gr.Textbox(label="What Ugbo understood", lines=1)
     facts = gr.Textbox(label="Rain facts used", lines=2)
     gr.Markdown("Runs on open models: NaijaVox-2.0 (listening), Gemma (plan), "
-                "and your phone's own voice to read the plan aloud.")
-    go.click(run, [town, crops, lang, mic, typed], [text, heard, facts]).then(
-        None, [text, lang], None, js=READ_ALOUD)
-    listen.click(None, [text, lang], None, js=READ_ALOUD)
+                "and Google text-to-speech to read the plan aloud.")
+    go.click(run, [town, crops, lang, mic, typed], [spoken, text, heard, facts])
 
 if __name__ == "__main__":
     demo.launch(theme=gr.themes.Soft(primary_hue="green"))

@@ -1,4 +1,5 @@
 requests
+gTTS
 numpy
 librosa
 transformers>=4.44

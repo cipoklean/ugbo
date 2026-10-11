@@ -38,7 +38,7 @@ The screen is the shortest part of the experience. Ask, listen, go to the farm.
                                               │
                          fact check ──► fallback to a templated plan if Gemma drifts
                                               │
-                         phone's own voice (Web Speech API) ──► 🔊 spoken plan
+                         Google text-to-speech (Nigerian English accent) ──► 🔊 spoken plan
 ```
 
 * **Rules decide the facts, Gemma decides the words.** Planting windows,
@@ -80,15 +80,14 @@ Optional: `UGBO_MODEL` overrides the Gemma model name, `UGBO_ASR_MODEL` the spee
 
 | Language | Speak to Ugbo | Plan written in | Read aloud |
 |---|---|---|---|
-| Nigerian Pidgin | ✅ | ✅ | phone's Nigerian English voice |
-| English | ✅ | ✅ | ✅ phone voice (en-NG where installed) |
-| Hausa | ✅ | ✅ | phone's Hausa voice if installed, else English voice |
-| Yorùbá | ✅ | ✅ | phone's Yorùbá voice if installed, else English voice |
-| Igbo | ✅ (less accurate) | ✅ | phone's Igbo voice if installed, else English voice |
+| Nigerian Pidgin | ✅ | ✅ | Nigerian English voice |
+| English | ✅ | ✅ | ✅ Nigerian English voice |
+| Hausa | ✅ | ✅ | ✅ Hausa voice |
+| Yorùbá | ✅ | ✅ | Nigerian English voice |
+| Igbo | ✅ (less accurate) | ✅ | Nigerian English voice |
 
-The web app reads plans aloud with the phone's own text-to-speech (the browser's
-Web Speech API): it sounds natural on Android, works on cheap phones and costs no
-GPU. The CLI can still speak with the server-side Naija TTS / MMS-TTS voices in
+The web app reads plans aloud with Google text-to-speech (gTTS, `com.ng`
+accent): a small MP3 that plays in any phone browser and costs no GPU. The CLI can still speak with the server-side Naija TTS / MMS-TTS voices in
 `ugbo/voice.py`; note MMS-TTS is **CC-BY-NC-4.0 (non-commercial)** and Naija TTS
 audio carries Resemble's Perth watermark.
 
