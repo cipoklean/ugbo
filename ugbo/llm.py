@@ -87,7 +87,7 @@ def _local():
     return processor, model.eval()
 
 
-@gpu(duration=90)
+@gpu(duration=30)
 def _generate_local(prompt: str) -> str:
     import torch
 

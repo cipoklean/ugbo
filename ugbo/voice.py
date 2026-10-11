@@ -57,7 +57,7 @@ def _to_16k_mono(sr: int, audio: np.ndarray) -> np.ndarray:
     return audio[: 16000 * 30]  # Whisper window: 30 s is plenty for a question
 
 
-@gpu
+@gpu(duration=20)
 def transcribe(sr: int, audio: np.ndarray, lang: str = "pcm") -> str:
     import torch
 
