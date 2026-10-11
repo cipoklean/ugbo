@@ -34,7 +34,7 @@ The screen is the shortest part of the experience. Ask, listen, go to the farm.
                                               │
                          Gemma (open weights) ──► plan in the farmer's language
                                               │
-                         MMS-TTS (open voice) ──► 🔊 spoken plan
+                         Naija TTS (open voice) ──► 🔊 spoken plan
 ```
 
 * **Rules decide the facts, Gemma decides the words.** Planting windows,
@@ -66,16 +66,20 @@ Optional: `UGBO_MODEL` overrides the Gemma model name, `UGBO_ASR_MODEL` the spee
 
 | Language | Speak to Ugbo | Ugbo speaks back |
 |---|---|---|
-| Nigerian Pidgin | ✅ | ✅ |
-| English | ✅ | ✅ |
-| Hausa | ✅ | ✅ |
-| Yorùbá | ✅ | ✅ |
-| Igbo | ✅ (less accurate) | text only, since no open Igbo voice model exists yet |
+| Nigerian Pidgin | ✅ | ✅ Naija TTS (Nigerian English voice) |
+| English | ✅ | ✅ Naija TTS |
+| Hausa | ✅ | ✅ Naija TTS |
+| Yorùbá | ✅ | ✅ MMS-TTS (Naija TTS is weak on Yorùbá tones) |
+| Igbo | ✅ (less accurate) | ✅ Naija TTS |
+
+Off a GPU, or if Naija TTS fails to load, Ugbo falls back to the small MMS-TTS
+voices (more robotic, with no Igbo voice). Set `UGBO_TTS=mms` to force that.
 
 ## Open models used
 
 * [NaijaVox-2.0](https://huggingface.co/Axiveri/NaijaVox-2.0) (Apache-2.0): Whisper-large-v3 fine-tuned for Nigerian languages
 * [Gemma 3 12B](https://huggingface.co/google/gemma-3-12b-it): open-weight LLM from Google (the Space loads the ungated `unsloth/gemma-3-12b-it` copy of the same weights)
+* [Naija TTS](https://huggingface.co/PlotweaverAI/naija-tts) (MIT): Chatterbox Multilingual fine-tuned on Hausa, Yorùbá, Igbo and Nigerian English. Its audio carries Resemble's Perth watermark
 * [MMS-TTS](https://huggingface.co/facebook/mms-tts-pcm) (CC-BY-NC-4.0): Meta's Massively Multilingual Speech voices
 
 ## Limits

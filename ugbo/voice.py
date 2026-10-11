@@ -2,9 +2,11 @@
 
 Speech-to-text: NaijaVox-2.0 (Apache-2.0, Whisper-large-v3 fine-tuned on
 Yoruba, Hausa, Igbo, Nigerian Pidgin and Nigerian English).
-Text-to-speech: Meta MMS-TTS (VITS), one small model per language.
+Text-to-speech: Naija TTS (MIT, Chatterbox fine-tuned on Nigerian English,
+Hausa, Yoruba and Igbo) on a GPU, with Meta MMS-TTS (VITS, one small model per
+language) as the CPU/offline fallback.
 
-Both are open-weight and run on a CPU, so no voice data leaves the machine.
+All are open-weight, so they can run on your own machine.
 Models are loaded lazily and cached on first use.
 """
 from __future__ import annotations
@@ -15,6 +17,7 @@ from functools import lru_cache
 
 import numpy as np
 
+from . import naija_tts
 from .gpu import device as _device, gpu
 
 ASR_MODEL = os.getenv("UGBO_ASR_MODEL", "Axiveri/NaijaVox-2.0")
@@ -83,13 +86,23 @@ def _tts(lang: str):
 
 
 def can_speak(lang: str) -> bool:
-    return lang in TTS_MODEL
+    return naija_tts.supports(lang) or lang in TTS_MODEL
 
 
 def speak(text: str, lang: str) -> tuple[int, np.ndarray] | None:
     """Return (sample_rate, waveform) or None when no voice exists for lang."""
-    if not can_speak(lang):
+    if naija_tts.supports(lang):
+        try:
+            return naija_tts.speak(text, lang)
+        except Exception as e:  # fall back to the small CPU voice
+            print(f"Naija TTS failed, using MMS-TTS: {e}", flush=True)
+    if lang not in TTS_MODEL:
         return None
+    return _mms_speak(text, lang)
+
+
+def _mms_speak(text: str, lang: str) -> tuple[int, np.ndarray] | None:
+    text = naija_tts._number_words(text)
     import torch
 
     tok, model = _tts(lang)

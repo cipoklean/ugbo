@@ -19,6 +19,12 @@ if os.getenv("SPACE_ID"):
         lm.to("cuda")
     for code in voice.TTS_MODEL:
         voice._tts(code)
+    try:
+        from ugbo import naija_tts
+        if naija_tts.enabled():
+            naija_tts._model()
+    except Exception as e:  # the MMS voices still work
+        print(f"Naija TTS unavailable: {e}", flush=True)
 
 LANG_CHOICES = [("Pidgin", "pcm"), ("English", "en"), ("Hausa", "ha"), ("Yorùbá", "yo"), ("Igbo", "ig")]
 
@@ -59,8 +65,8 @@ with gr.Blocks(title="Ugbo - talk to your farm") as demo:
     text = gr.Textbox(label="Your plan (text)", lines=6)
     heard = gr.Textbox(label="What Ugbo heard", lines=1)
     facts = gr.Textbox(label="Rain facts used", lines=2)
-    gr.Markdown("Igbo answers are text only for now: there is no open Igbo voice model yet. "
-                "Runs on open models: NaijaVox-2.0 (speech), Gemma (plan), MMS-TTS (voice).")
+    gr.Markdown("Runs on open models: NaijaVox-2.0 (listening), Gemma (plan), "
+                "Naija TTS and MMS-TTS (voice).")
     go.click(run, [town, crops, lang, mic, typed], [spoken, text, heard, facts])
 
 if __name__ == "__main__":

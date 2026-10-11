@@ -3,3 +3,11 @@ numpy
 librosa
 transformers>=4.44
 accelerate
+# Naija TTS (chatterbox-tts itself is installed with --no-deps at startup)
+s3tokenizer
+diffusers==0.29.0
+resemble-perth
+conformer==0.3.2
+pyloudnorm
+omegaconf
+safetensors
