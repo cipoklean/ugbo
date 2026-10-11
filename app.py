@@ -1,7 +1,7 @@
 """Ugbo web app. Speak or tap, hear your plan, put the phone away, go to the farm.
 
-The plan is read aloud with Google's text-to-speech (gTTS, Nigerian English
-accent; Hausa voice for Hausa). It returns a small MP3 that plays in any phone
+The plan is read aloud by a Nigerian neural voice (edge-tts en-NG; Google's
+Hausa voice for Hausa, gTTS as fallback). It returns a small MP3 that plays in any phone
 browser and costs no GPU. The open-model voices in ugbo/voice.py remain for the CLI.
 """
 from __future__ import annotations
@@ -48,15 +48,29 @@ def run(town, crops, lang, mic, typed):
 
 
 def speak(text: str, lang: str):
-    """MP3 of the plan in a natural voice; None if the voice service is down."""
+    """MP3 of the plan in a natural voice; None if no voice service answers.
+
+    English, Pidgin, Yoruba and Igbo plans use Microsoft's Nigerian neural
+    voice (en-NG-EzinneNeural) via edge-tts; Hausa uses Google's Hausa voice.
+    gTTS (Nigerian English accent) is the fallback.
+    """
+    f = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False).name
+    if lang != "ha":
+        try:
+            import edge_tts
+            edge_tts.Communicate(text, "en-NG-EzinneNeural", rate="-5%").save_sync(f)
+            print("Voice: edge-tts en-NG", flush=True)
+            return f
+        except Exception as e:
+            print(f"edge-tts unavailable: {e}", flush=True)
     try:
         from gtts import gTTS
-        f = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
         if lang == "ha":
-            gTTS(text, lang="ha").save(f.name)
-        else:  # Nigerian English accent for English, Pidgin, Yoruba and Igbo text
-            gTTS(text, lang="en", tld="com.ng").save(f.name)
-        return f.name
+            gTTS(text, lang="ha").save(f)
+        else:
+            gTTS(text, lang="en", tld="com.ng").save(f)
+        print(f"Voice: gTTS {lang}", flush=True)
+        return f
     except Exception as e:
         print(f"Voice unavailable: {e}", flush=True)
         return None
@@ -78,7 +92,7 @@ with gr.Blocks(title="Ugbo - talk to your farm") as demo:
     heard = gr.Textbox(label="What Ugbo understood", lines=1)
     facts = gr.Textbox(label="Rain facts used", lines=2)
     gr.Markdown("Runs on open models: NaijaVox-2.0 (listening), Gemma (plan), "
-                "and Google text-to-speech to read the plan aloud.")
+                "and a Nigerian neural voice to read the plan aloud.")
     go.click(run, [town, crops, lang, mic, typed], [spoken, text, heard, facts])
 
 if __name__ == "__main__":

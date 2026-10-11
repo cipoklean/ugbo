@@ -1,5 +1,6 @@
 requests
 gTTS
+edge-tts
 numpy
 librosa
 transformers>=4.44

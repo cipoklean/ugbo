@@ -38,7 +38,7 @@ The screen is the shortest part of the experience. Ask, listen, go to the farm.
                                               │
                          fact check ──► fallback to a templated plan if Gemma drifts
                                               │
-                         Google text-to-speech (Nigerian English accent) ──► 🔊 spoken plan
+                         Nigerian neural voice (edge-tts en-NG) ──► 🔊 spoken plan
 ```
 
 * **Rules decide the facts, Gemma decides the words.** Planting windows,
@@ -86,8 +86,9 @@ Optional: `UGBO_MODEL` overrides the Gemma model name, `UGBO_ASR_MODEL` the spee
 | Yorùbá | ✅ | ✅ | Nigerian English voice |
 | Igbo | ✅ (less accurate) | ✅ | Nigerian English voice |
 
-The web app reads plans aloud with Google text-to-speech (gTTS, `com.ng`
-accent): a small MP3 that plays in any phone browser and costs no GPU. The CLI can still speak with the server-side Naija TTS / MMS-TTS voices in
+The web app reads plans aloud with Microsoft's Nigerian English neural voice
+(`en-NG-EzinneNeural`, via edge-tts) and Google's Hausa voice for Hausa, with
+gTTS as a fallback: a small MP3 that plays in any phone browser and costs no GPU. The CLI can still speak with the server-side Naija TTS / MMS-TTS voices in
 `ugbo/voice.py`; note MMS-TTS is **CC-BY-NC-4.0 (non-commercial)** and Naija TTS
 audio carries Resemble's Perth watermark.
 
