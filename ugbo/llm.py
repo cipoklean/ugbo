@@ -35,6 +35,7 @@ SYSTEM = (
     "Speak warmly and plainly, like a trusted neighbour. Your answer will be read aloud, "
     "so: no markdown, no bullet symbols, no emojis, short sentences, at most 120 words. "
     "Use ONLY the facts given. Never invent dates, rainfall numbers, prices or chemicals. "
+    "Say how sure Ugbo is, using the confidence fact given. "
     "End by telling the farmer the single most important job to do in the field today."
 )
 

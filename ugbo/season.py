@@ -95,6 +95,7 @@ class Signals:
     soil: str                      # "wet", "moist", "drying", "dry"
     crop_jobs: dict[str, list[str]]  # crop -> ["plant", "harvest"]
     flags: list[str]               # plain-English facts the model must respect
+    confidence: str = "fairly sure"  # "sure", "fairly sure", "not sure"
 
 
 def _longest_dry(series: list[float]) -> int:
@@ -148,4 +149,25 @@ def signals(facts: RainFacts, crops: list[str], today: dt.date | None = None) ->
             flags.append(f"This is not the usual time to plant or harvest {c} in this zone; "
                          "focus on weeding, pest checks and care.")
 
-    return Signals(zone, month, heavy, dry_ahead, dry_past, soil, jobs, flags)
+    planting = any("plant" in j for j in jobs.values())
+    # False onset: early rains followed by a dry spell kill seedlings. Only call
+    # the rains "established" after several rainy days and no dry spell ahead.
+    past = list(facts.past.values())
+    rainy_recent = sum(1 for mm in past[-7:] if mm >= 1.0)
+    dry_spell_ahead = _longest_dry(list(facts.forecast.values()))
+    established = rainy_recent >= 3 and facts.past_total >= 20 and dry_spell_ahead < 4
+    if planting and not established:
+        flags.append("The rains are not yet established (fewer than 3 rainy days in the last week, "
+                     "or a dry spell of 4 or more days is forecast). This could be a false start: "
+                     "wait before planting seeds.")
+
+    if planting and not established:
+        confidence = "not sure"
+    elif heavy or dry_past >= 7 or (planting and soil in ("dry", "drying")):
+        confidence = "fairly sure"
+    else:
+        confidence = "sure"
+    flags.append(f"How sure Ugbo is about this week's advice: {confidence}. "
+                 "Rain data is from weather models, not a gauge on your farm.")
+
+    return Signals(zone, month, heavy, dry_ahead, dry_past, soil, jobs, flags, confidence)

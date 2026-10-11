@@ -35,3 +35,18 @@ def test_off_season_crop():
     s = signals(facts(12.0, [5] * 14, [5] * 7), ["sorghum"], dt.date(2026, 2, 1))
     assert s.crop_jobs["sorghum"] == []
     assert any("not the usual time" in f for f in s.flags)
+
+
+def test_false_onset_blocks_planting():
+    # a little rain, then a dry week forecast, in planting month
+    s = signals(facts(9.0, [0] * 10 + [8, 0, 6, 0], [0] * 7), ["maize"], dt.date(2026, 5, 1))
+    assert "plant" in s.crop_jobs["maize"]
+    assert s.confidence == "not sure"
+    assert any("false start" in f for f in s.flags)
+
+
+def test_check_rejects_invented_numbers():
+    from ugbo.plan import check
+    prompt = "Rain in last 14 days: 85.2 mm. Next 7 days: 16.0 mm."
+    assert check("You got 85 mm of rain, 16 mm is coming.", prompt) == ""
+    assert check("Apply 50 kg of urea per hectare.", prompt) != ""

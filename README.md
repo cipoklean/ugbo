@@ -23,6 +23,8 @@ rain at their village, works out what the season allows for their crops, and
 
 The screen is the shortest part of the experience. Ask, listen, go to the farm.
 
+**Try it:** [huggingface.co/spaces/Cipoklean/ugbo](https://huggingface.co/spaces/Cipoklean/ugbo)
+
 ## How it works
 
 ```
@@ -34,12 +36,24 @@ The screen is the shortest part of the experience. Ask, listen, go to the farm.
                                               │
                          Gemma (open weights) ──► plan in the farmer's language
                                               │
-                         Naija TTS (open voice) ──► 🔊 spoken plan
+                         fact check ──► fallback to a templated plan if Gemma drifts
+                                              │
+                         phone's own voice (Web Speech API) ──► 🔊 spoken plan
 ```
 
 * **Rules decide the facts, Gemma decides the words.** Planting windows,
   heavy-rain warnings and dry-spell checks come from transparent rules in
   `ugbo/season.py`. Gemma only explains them, so it can't invent a planting date.
+* **Gemma's words are checked.** Every number in Gemma's answer must appear in
+  the facts it was given. If Gemma invents a rainfall figure or a fertilizer
+  rate, its answer is dropped and a templated plan built from the rules is used.
+  The same template answers when the model is unavailable (e.g. GPU quota).
+* **False starts are caught.** Early rain followed by a dry spell is the classic
+  way a farmer loses a season. Ugbo only treats the rains as established after
+  3+ rainy days in the last week, 20 mm+ in two weeks and no dry spell of 4+ days
+  forecast. Until then it says "wait", and every plan says how sure it is.
+* **Misheard questions are echoed.** Ugbo shows "You asked: ..." so the farmer
+  can correct a bad transcription before acting on the answer.
 * **Free to run.** Every data source is free and keyless.
 * **Swappable model.** On the Hugging Face Space, Gemma 3 12B runs in-process on
   free ZeroGPU (`UGBO_LLM=local`). `ollama` runs Gemma fully on your own machine,
@@ -64,16 +78,19 @@ Optional: `UGBO_MODEL` overrides the Gemma model name, `UGBO_ASR_MODEL` the spee
 
 ## Languages
 
-| Language | Speak to Ugbo | Ugbo speaks back |
-|---|---|---|
-| Nigerian Pidgin | ✅ | ✅ Naija TTS (Nigerian English voice) |
-| English | ✅ | ✅ Naija TTS |
-| Hausa | ✅ | ✅ Naija TTS |
-| Yorùbá | ✅ | ✅ MMS-TTS (Naija TTS is weak on Yorùbá tones) |
-| Igbo | ✅ (less accurate) | ✅ Naija TTS |
+| Language | Speak to Ugbo | Plan written in | Read aloud |
+|---|---|---|---|
+| Nigerian Pidgin | ✅ | ✅ | phone's Nigerian English voice |
+| English | ✅ | ✅ | ✅ phone voice (en-NG where installed) |
+| Hausa | ✅ | ✅ | phone's Hausa voice if installed, else English voice |
+| Yorùbá | ✅ | ✅ | phone's Yorùbá voice if installed, else English voice |
+| Igbo | ✅ (less accurate) | ✅ | phone's Igbo voice if installed, else English voice |
 
-Off a GPU, or if Naija TTS fails to load, Ugbo falls back to the small MMS-TTS
-voices (more robotic, with no Igbo voice). Set `UGBO_TTS=mms` to force that.
+The web app reads plans aloud with the phone's own text-to-speech (the browser's
+Web Speech API): it sounds natural on Android, works on cheap phones and costs no
+GPU. The CLI can still speak with the server-side Naija TTS / MMS-TTS voices in
+`ugbo/voice.py`; note MMS-TTS is **CC-BY-NC-4.0 (non-commercial)** and Naija TTS
+audio carries Resemble's Perth watermark.
 
 ## Open models used
 
@@ -82,7 +99,14 @@ voices (more robotic, with no Igbo voice). Set `UGBO_TTS=mms` to force that.
 * [Naija TTS](https://huggingface.co/PlotweaverAI/naija-tts) (MIT): Chatterbox Multilingual fine-tuned on Hausa, Yorùbá, Igbo and Nigerian English. Its audio carries Resemble's Perth watermark
 * [MMS-TTS](https://huggingface.co/facebook/mms-tts-pcm) (CC-BY-NC-4.0): Meta's Massively Multilingual Speech voices
 
-## Limits
+## Limits and what's not yet verified
+
+* **Accuracy is not yet measured.** There is no word-error-rate evaluation of
+  NaijaVox on farm questions yet (Igbo is known to be weaker), and the crop
+  calendar has not been checked row by row against IITA / state ADP calendars.
+  Help with either is the most useful contribution (see CONTRIBUTING.md).
+* **Reach.** A web app needs data and a smartphone. A WhatsApp voice-note or
+  phone-call (IVR) front end would reach far more farmers; that's the next step.
 
 The crop calendar is a rule of thumb for three broad zones (South, Middle Belt,
 North), not a replacement for your local extension officer. Rain data comes from
